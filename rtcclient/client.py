@@ -14,6 +14,7 @@ from rtcclient.template import Templater
 from rtcclient import _search_path
 from rtcclient.query import Query
 import six
+from requests.exceptions import HTTPError
 
 
 class RTCClient(RTCBase):
@@ -83,6 +84,7 @@ class RTCClient(RTCBase):
             _allow_redirects = False
 
         _headers = {"Content-Type": self.CONTENT_XML}
+
         resp = self.get(self.url + "/authenticated/identity",
                         verify=False,
                         headers=_headers,
@@ -117,7 +119,7 @@ class RTCClient(RTCBase):
             _headers["Cookie"] += "; " + resp.headers.get("set-cookie")
         else:
             _headers["Cookie"] = resp.headers.get("set-cookie")
-
+            
         _headers["Accept"] = self.CONTENT_XML
         return _headers
 
@@ -592,6 +594,80 @@ class RTCClient(RTCBase):
                                          projectarea_id=projarea_id,
                                          page_size="10",
                                          filter_rule=filter_rule)
+
+    def getState(self, state_name, projectarea_id=None,
+                    projectarea_name=None):
+        """Get :class:`rtcclient.models.State` object by its name
+
+        At least either of `projectarea_id` and `projectarea_name` is given
+
+        :param state_name: the state_name name
+        :param projectarea_id: the :class:`rtcclient.project_area.ProjectArea`
+            id
+        :param projectarea_name: the project area name
+        :return: the :class:`rtcclient.models.State` object
+        :rtype: rtcclient.models.State
+        """
+
+        self.log.debug("Try to get <State %s>", state_name)
+        if not isinstance(state_name,
+                          six.string_types) or not state_name:
+            excp_msg = "Please specify a valid Severity name"
+            self.log.error(excp_msg)
+            raise exception.BadValue(excp_msg)
+
+        states = self._getStates(projectarea_id=projectarea_id,
+                                 projectarea_name=projectarea_name,
+                                 state_name=state_name)
+
+        if states is not None:
+            states = states[0]
+            self.log.info("Find <State %s>", states)
+            return states
+
+        self.log.error("No State named %s", state_name)
+        raise exception.NotFound("No State named %s" % state_name)
+
+    def getStates(self, projectarea_id=None, projectarea_name=None):
+        """Get all :class:`rtcclient.models.State` objects by
+        project area id or name
+
+        At least either of `projectarea_id` and `projectarea_name` is given
+
+        If no :class:`rtcclient.models.State` is retrieved,
+        `None` is returned.
+
+        :param projectarea_id: the :class:`rtcclient.project_area.ProjectArea`
+            id
+        :param projectarea_name: the project area name
+        :return: a :class:`list` that contains all the
+            :class:`rtcclient.models.State` objects
+        :rtype: list
+        """
+
+        return self._getStates(projectarea_id=projectarea_id,
+                                   projectarea_name=projectarea_name)
+
+    def _getStates(self, projectarea_id=None, projectarea_name=None,
+                       state_name=None):
+        projarea_id = self._pre_get_resource(projectarea_id=projectarea_id,
+                                             projectarea_name=projectarea_name)
+        if projarea_id is None:
+            self.log.error("Please input either-or between "
+                           "projectarea_id and projectarea_name")
+            raise exception.EmptyAttrib("At least input either-or between "
+                                        "projectarea_id and projectarea_name")
+
+        filter_rule = None
+        if state_name is not None:
+            fsname_rule = ("dc:title", None, state_name)
+            filter_rule = self._add_filter_rule(filter_rule, fsname_rule)
+
+        return self._get_paged_resources("State",
+                                         projectarea_id=projarea_id,
+                                         page_size="10",
+                                         filter_rule=filter_rule,
+                                         customized_attr='com.ibm.team.workitem.taskWorkflow')
 
     def getPriority(self, priority_name, projectarea_id=None,
                     projectarea_name=None):

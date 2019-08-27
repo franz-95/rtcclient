@@ -87,21 +87,12 @@ class RTCClient(RTCBase):
                         verify=False,
                         headers=_headers,
                         proxies=self.proxies,
-                        allow_redirects=_allow_redirects)
+                        allow_redirects=_allow_redirects,
+                        auth=(self.username, self.password))
 
         _headers["Content-Type"] = self.CONTENT_URL_ENCODED
         if resp.headers.get("set-cookie") is not None:
             _headers["Cookie"] = resp.headers.get("set-cookie")
-
-        credentials = urlencode({"j_username": self.username,
-                                 "j_password": self.password})
-
-        resp = self.post(self.url + "/authenticated/j_security_check",
-                         data=credentials,
-                         verify=False,
-                         headers=_headers,
-                         proxies=self.proxies,
-                         allow_redirects=_allow_redirects)
 
         # authfailed
         authfailed = resp.headers.get("x-com-ibm-team-repository-web-auth-msg")
@@ -118,7 +109,8 @@ class RTCClient(RTCBase):
                         verify=False,
                         headers=_headers,
                         proxies=self.proxies,
-                        allow_redirects=_allow_redirects)
+                        allow_redirects=_allow_redirects,
+                        auth=(self.username, self.password))
 
         # fix issue #68
         if not _allow_redirects:

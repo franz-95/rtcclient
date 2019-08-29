@@ -124,6 +124,10 @@ class State(FieldBase):
     """Status of the work item. For example, New, In Progress, or Resolved."""
 
     log = logging.getLogger("models.State")
+    
+    def __init__(self, url, rtc_obj, raw_data=None):
+        self.id = url.split("/")[-1]
+        FieldBase.__init__(self, url, rtc_obj, raw_data)
 
     def __str__(self):
         return self.title
